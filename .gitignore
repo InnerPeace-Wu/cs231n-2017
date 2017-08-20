@@ -1,0 +1,6 @@
+cs231n/datasets*
+.ipynb_checkpoints*
+.env/
+.pyc
+cs231n/build/
+.DS_Store
