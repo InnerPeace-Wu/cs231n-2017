@@ -4,3 +4,4 @@ cs231n/datasets*
 .pyc
 cs231n/build/
 .DS_Store
+.so
