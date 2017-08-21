@@ -419,7 +419,20 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    pass
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    pad = conv_param.get('pad', 0)
+    stride = conv_param.get('stride', 1)
+    out_h = int(1 + (H + 2 * pad - HH) / stride)
+    out_w = int(1 + (W + 2 * pad - WW) / stride)
+    out = np.zeros((N, F, out_h, out_w))
+    x_pad = np.lib.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), 'constant')
+    x_pad = x_pad[:, np.newaxis, :, :, :]
+    for ih in range(out_h):
+        for iw in range(out_w):
+            x_field = x_pad[:, :, :, stride*ih:stride*ih+HH, stride*iw:stride*iw+WW]
+            out[:, :, ih, iw] = np.sum(x_field * w, axis=(2, 3, 4)) + b
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -444,7 +457,40 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+
+    x, w, b, conv_param = cache
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    pad = conv_param.get('pad', 0)
+    stride = conv_param.get('stride', 1)
+    out_h = int(1 + (H + 2 * pad - HH) / stride)
+    out_w = int(1 + (W + 2 * pad - WW) / stride)
+    out = np.zeros((N, F, out_h, out_w))
+    x_pad = np.lib.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), 'constant')
+
+    dw = np.zeros(w.shape)
+    dx_pad = np.zeros(x_pad.shape)
+    dx = np.zeros(x.shape)
+    db = np.sum(dout, axis=(0, 2, 3))
+    for ih in range(out_h):
+        for iw in range(out_w):
+            st_h = stride*ih
+            en_h = stride*ih+HH
+            st_w = stride*iw
+            en_w = stride*iw+WW
+            # [N, F]
+            d_temp = dout[:, :, ih, iw]
+            # [N, C, HH, WW]
+            x_field = x_pad[:, :, st_h:en_h, st_w:en_w]
+            # [F, N, C, HH, WW]
+            dw_t = d_temp.transpose(1, 0)[:, :, None, None, None] * x_field
+            # [F, C, HH, WW]
+            dw += np.sum(dw_t, axis = 1)
+            dx_t = d_temp[:, :, None, None, None] * w
+            dx_pad[:, :, st_h:en_h, st_w:en_w] += np.sum(dx_t, axis=1)
+
+    dx = dx_pad[:, :, pad:-pad, pad:-pad]
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
