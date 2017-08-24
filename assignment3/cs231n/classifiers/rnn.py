@@ -140,11 +140,15 @@ class CaptioningRNN(object):
 
         h0 = np.dot(features, W_proj)+ b_proj
         x, cache_embed = word_embedding_forward(captions_in, W_embed)
-        h, cache_rnn = rnn_forward(x, h0, Wx, Wh, b)
-        out, cache_out = temporal_affine_forward(h, W_vocab, b_vocab)
-        loss, dout = temporal_softmax_loss(out, captions_out, mask)
-        dh, dW_vocab, db_vocab = temporal_affine_backward(dout, cache_out)
-        dx, dh0, dWx, dWh, db = rnn_backward(dh, cache_rnn)
+
+        # using vanilla rnn
+        if self.cell_type == 'rnn':
+            h, cache_rnn = rnn_forward(x, h0, Wx, Wh, b)
+            out, cache_out = temporal_affine_forward(h, W_vocab, b_vocab)
+            loss, dout = temporal_softmax_loss(out, captions_out, mask)
+            dh, dW_vocab, db_vocab = temporal_affine_backward(dout, cache_out)
+            dx, dh0, dWx, dWh, db = rnn_backward(dh, cache_rnn)
+
         db_proj = np.sum(dh0, axis=0)
         dW_proj = np.dot(features.T, dh0)
         dW_embed = word_embedding_backward(dx, cache_embed)
@@ -218,6 +222,21 @@ class CaptioningRNN(object):
         # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
         # a loop.                                                                 #
         ###########################################################################
+
+        h0 = np.dot(features, W_proj, b_proj)
+        prev_h = h0
+        x_in = np.zeros(N)
+        x_in = self._start
+        # N x D
+        for t in range(max_length):
+            x = word_embedding_forward(x_in, W_embed)
+            # N x H
+            next_h, _ = rnn_step_forward(x, prev_h, Wx, Wh, b)
+            # N x V
+            scores = next_h.dot(W_vocab) + b_vocab
+            # N x 1
+            x_in = np.argmax(scores, axis = 1)
+            captions[:, t] = x_in
 
         ############################################################################
         #                             END OF YOUR CODE                             #
