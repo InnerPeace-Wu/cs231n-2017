@@ -8,3 +8,4 @@ cs231n/build/
 *.ckpt*
 *.npz
 coco_captioning/
+*.gz
